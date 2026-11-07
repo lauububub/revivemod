@@ -1,0 +1,9 @@
+{
+  "item.revive.revive": "Revive",
+  "item.revive.revive.desc": "Use carefully",
+  "screen.revive.title": "Revive a Player",
+  "screen.revive.none": "No players in spectator mode.",
+  "screen.revive.prev": "< Prev",
+  "screen.revive.next": "Next >",
+  "screen.revive.close": "Close"
+}

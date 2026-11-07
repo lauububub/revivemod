@@ -1,0 +1,20 @@
+{
+  "schemaVersion": 1,
+  "id": "revive",
+  "version": "${version}",
+  "name": "Revive",
+  "description": "A craftable Revive item that brings dead hardcore players back from spectator mode.",
+  "authors": ["You"],
+  "license": "MIT",
+  "environment": "*",
+  "entrypoints": {
+    "main": ["com.revive.ReviveMod"],
+    "client": ["com.revive.client.ReviveClient"]
+  },
+  "depends": {
+    "fabricloader": ">=0.19.1",
+    "minecraft": "~26.2",
+    "java": ">=25",
+    "fabric-api": "*"
+  }
+}
