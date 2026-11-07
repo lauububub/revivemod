@@ -14,7 +14,17 @@
     "M": "minecraft:mace"
   },
   "result": {
-    "id": "revive:revive",
-    "count": 1
+    "id": "minecraft:ghast_tear",
+    "count": 1,
+    "components": {
+      "minecraft:custom_name": {"text": "Revive", "color": "red", "italic": false},
+      "minecraft:lore": [
+        {"text": "Use carefully", "color": "red", "italic": false}
+      ],
+      "minecraft:item_model": "revive:revive",
+      "minecraft:custom_data": {"revive": 1},
+      "minecraft:enchantment_glint_override": true,
+      "minecraft:max_stack_size": 1
+    }
   }
 }
