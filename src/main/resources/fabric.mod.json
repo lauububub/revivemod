@@ -3,13 +3,12 @@
   "id": "revive",
   "version": "${version}",
   "name": "Revive",
-  "description": "A craftable Revive item that brings dead hardcore players back from spectator mode.",
+  "description": "Server-side craftable Revive item that brings dead hardcore players back from spectator mode. Players need no mod.",
   "authors": ["You"],
   "license": "MIT",
-  "environment": "*",
+  "environment": "server",
   "entrypoints": {
-    "main": ["com.revive.ReviveMod"],
-    "client": ["com.revive.client.ReviveClient"]
+    "main": ["com.revive.ReviveMod"]
   },
   "depends": {
     "fabricloader": ">=0.19.1",
