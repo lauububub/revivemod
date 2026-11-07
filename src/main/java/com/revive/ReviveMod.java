@@ -1,72 +1,99 @@
-package com.revive.client;
+package com.revive;
 
 import com.revive.network.OpenReviveScreenPayload;
 import com.revive.network.ReviveRequestPayload;
 import java.util.List;
-import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking;
-import net.minecraft.client.gui.components.Button;
-import net.minecraft.client.gui.components.StringWidget;
-import net.minecraft.client.gui.screens.Screen;
+import java.util.Set;
+import net.fabricmc.api.ModInitializer;
+import net.fabricmc.fabric.api.networking.v1.PayloadTypeRegistry;
+import net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking;
+import net.minecraft.ChatFormatting;
+import net.minecraft.core.Registry;
+import net.minecraft.core.component.DataComponents;
+import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.core.registries.Registries;
 import net.minecraft.network.chat.Component;
+import net.minecraft.resources.Identifier;
+import net.minecraft.resources.ResourceKey;
+import net.minecraft.server.level.ServerLevel;
+import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.sounds.SoundEvents;
+import net.minecraft.sounds.SoundSource;
+import net.minecraft.world.item.Item;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.Rarity;
+import net.minecraft.world.item.component.ItemLore;
+import net.minecraft.world.level.GameType;
 
-/** Menu listing every player currently in spectator mode. Click one to revive them. */
-public class ReviveScreen extends Screen {
-    private static final int PER_PAGE = 6;
+public class ReviveMod implements ModInitializer {
+    public static final String MOD_ID = "revive";
 
-    private final List<OpenReviveScreenPayload.Entry> players;
-    private int page = 0;
+    public static Item REVIVE;
 
-    public ReviveScreen(List<OpenReviveScreenPayload.Entry> players) {
-        super(Component.translatable("screen.revive.title"));
-        this.players = players;
+    public static Identifier id(String path) {
+        return Identifier.fromNamespaceAndPath(MOD_ID, path);
     }
 
     @Override
-    protected void init() {
-        this.clearWidgets();
+    public void onInitialize() {
+        // Custom item (NOT a vanilla ghast tear) so nobody can just pick it up from a ghast.
+        ResourceKey<Item> key = ResourceKey.create(Registries.ITEM, id("revive"));
+        REVIVE = Registry.register(
+                BuiltInRegistries.ITEM,
+                key,
+                new ReviveItem(new Item.Properties()
+                        .setId(key)
+                        .stacksTo(1)
+                        .rarity(Rarity.EPIC)
+                        .component(DataComponents.ENCHANTMENT_GLINT_OVERRIDE, true)
+                        .component(DataComponents.LORE, new ItemLore(List.of(
+                                Component.translatable("item.revive.revive.desc")
+                                        .withStyle(ChatFormatting.RED))))));
 
-        int centerX = this.width / 2;
-        int top = this.height / 2 - 80;
+        PayloadTypeRegistry.clientboundPlay().register(OpenReviveScreenPayload.TYPE, OpenReviveScreenPayload.CODEC);
+        PayloadTypeRegistry.serverboundPlay().register(ReviveRequestPayload.TYPE, ReviveRequestPayload.CODEC);
 
-        this.addRenderableWidget(new StringWidget(0, top - 20, this.width, 9, this.title, this.font));
+        ServerPlayNetworking.registerGlobalReceiver(ReviveRequestPayload.TYPE, (payload, context) -> {
+            ServerPlayer user = context.player();
+            var server = context.server();
 
-        if (players.isEmpty()) {
-            this.addRenderableWidget(new StringWidget(0, top + 20, this.width, 9,
-                    Component.translatable("screen.revive.none"), this.font));
-        } else {
-            int start = page * PER_PAGE;
-            int end = Math.min(players.size(), start + PER_PAGE);
-            for (int i = start; i < end; i++) {
-                OpenReviveScreenPayload.Entry entry = players.get(i);
-                int y = top + (i - start) * 24;
-                this.addRenderableWidget(Button.builder(Component.literal(entry.name()), button -> {
-                    ClientPlayNetworking.send(new ReviveRequestPayload(entry.id()));
-                    this.onClose();
-                }).bounds(centerX - 100, y, 200, 20).build());
+            // Must actually be holding the item.
+            ItemStack held = null;
+            if (user.getMainHandItem().is(REVIVE)) {
+                held = user.getMainHandItem();
+            } else if (user.getOffhandItem().is(REVIVE)) {
+                held = user.getOffhandItem();
+            }
+            if (held == null) {
+                return;
             }
 
-            int navY = top + PER_PAGE * 24 + 4;
-            Button prev = Button.builder(Component.translatable("screen.revive.prev"), button -> {
-                page--;
-                this.init();
-            }).bounds(centerX - 100, navY, 98, 20).build();
-            prev.active = page > 0;
-            this.addRenderableWidget(prev);
+            ServerPlayer target = server.getPlayerList().getPlayer(payload.target());
+            if (target == null || target == user || !target.isSpectator()) {
+                user.sendSystemMessage(Component.literal("That player can't be revived right now.")
+                        .withStyle(ChatFormatting.RED));
+                return;
+            }
 
-            Button next = Button.builder(Component.translatable("screen.revive.next"), button -> {
-                page++;
-                this.init();
-            }).bounds(centerX + 2, navY, 98, 20).build();
-            next.active = end < players.size();
-            this.addRenderableWidget(next);
-        }
+            ServerLevel level = (ServerLevel) user.level();
 
-        this.addRenderableWidget(Button.builder(Component.translatable("screen.revive.close"), button -> this.onClose())
-                .bounds(centerX - 100, top + PER_PAGE * 24 + 30, 200, 20).build());
-    }
+            target.setGameMode(GameType.SURVIVAL);
+            target.teleportTo(level, user.getX(), user.getY(), user.getZ(), Set.of(),
+                    user.getYRot(), user.getXRot(), true);
+            target.setHealth(target.getMaxHealth());
+            target.getFoodData().setFoodLevel(20);
 
-    @Override
-    public boolean isPauseScreen() {
-        return false;
+            if (!user.getAbilities().instabuild) {
+                held.shrink(1);
+            }
+
+            level.playSound(null, user.getX(), user.getY(), user.getZ(),
+                    SoundEvents.TOTEM_USE, SoundSource.PLAYERS, 1.0F, 1.0F);
+
+            server.getPlayerList().broadcastSystemMessage(
+                    Component.literal(user.getName().getString() + " revived " + target.getName().getString() + "!")
+                            .withStyle(ChatFormatting.GOLD),
+                    false);
+        });
     }
 }
