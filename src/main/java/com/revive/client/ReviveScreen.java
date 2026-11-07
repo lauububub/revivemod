@@ -28,11 +28,11 @@ public class ReviveScreen extends Screen {
         int centerX = this.width / 2;
         int top = this.height / 2 - 80;
 
-        this.addRenderableWidget(new StringWidget(0, top - 20, this.width, 9, this.title, this.font).alignCenter());
+        this.addRenderableWidget(new StringWidget(0, top - 20, this.width, 9, this.title, this.font));
 
         if (players.isEmpty()) {
             this.addRenderableWidget(new StringWidget(0, top + 20, this.width, 9,
-                    Component.translatable("screen.revive.none"), this.font).alignCenter());
+                    Component.translatable("screen.revive.none"), this.font));
         } else {
             int start = page * PER_PAGE;
             int end = Math.min(players.size(), start + PER_PAGE);
