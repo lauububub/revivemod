@@ -8,6 +8,6 @@ public class ReviveClient implements ClientModInitializer {
     @Override
     public void onInitializeClient() {
         ClientPlayNetworking.registerGlobalReceiver(OpenReviveScreenPayload.TYPE,
-                (payload, context) -> context.client().setScreen(new ReviveScreen(payload.players())));
+                (payload, context) -> context.client().gui.setScreen(new ReviveScreen(payload.players())));
     }
 }
